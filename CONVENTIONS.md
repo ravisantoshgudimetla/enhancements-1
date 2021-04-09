@@ -128,22 +128,58 @@ it is used to manage all elements of the cluster.
 
 #### High Availability
 
-We focus on minimizing the impact of a failure of individual nodes in a cluster by ensuring operators or operands are spread across multiple nodes.
-When OpenShift runs in [cluster high availability mode](https://github.com/openshift/enhancements/pull/555), the supported cluster topologies are 3 control-plane nodes and 2 workers, or 3 control-plane nodes that also run workloads (compact clusters).  The following scenarios are intended to support the minimum 2 worker node configuration.  
-Please note that in case of [Single Node OpenShift](https://github.com/openshift/enhancements/blob/master/enhancements/single-node/production-deployment-approach.md), since the replicas needed are always 1, there is no need to have affinities set.
+OpenShift supports 3 deployment configurations:
 
+1. The standard highly-available cluster with 3 control plane nodes
+   and at least 2 worker nodes.
+2. Compact clusters with only 3 control plane nodes that also run
+   other workloads.
+3. Single-node deployments, where 1 node is the control plane and runs
+   workloads.
 
+We focus on minimizing the impact of a failure of individual nodes in
+a cluster by ensuring operators or operands are spread across multiple
+nodes using pod
+[anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#always-co-located-in-the-same-node)
+rules so that no two pods run on the same node. This approach only
+works for highly-available or compact clusters, where there are
+multiple nodes.
 
-* If the operator or operand wishes to be highly available and can tolerate the loss of one replica, the default configuration for it should be
-  * Two replicas
-  * Hard pod [anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#always-co-located-in-the-same-node) on hostname (no two pods on the same node)
-  * Use the maxUnavailable rollout strategy on deployments (prefer 25% by default for a value)
-  * This is the recommended approach for all the components unless the component needs 3 replicas
-* If the operator or operand requires >= 3 replicas and should be running on worker nodes
-  * Set soft pod anti-affinity on the hostname so that pods prefer to land on separate nodes (will be violated on two node clusters)
-  * Use maxSurge for deployments if possible since the spreading rules are soft
+Operators should use the [topology
+API](enhancements/single-node/cluster-high-availability-mode-api.md)
+to determine whether or not they can run in a highly available
+configuration.
 
-In future, when we include the descheduler into OpenShift by default, it will periodically rebalance the cluster to ensure spreading for operand or operator is honored. At that time we will remove hard anti-affinity constraints, and recommend components move to a surge model during upgrades.
+When the operator or operand wishes to be highly available and can
+tolerate the loss of one replica, it should use a default
+configuration based on a standard highly-available cluster with 2
+workers:
+
+* Run 2 replicas of its operand.
+* Use hard pod anti-affinity based on hostname.
+* Use the maxUnavailable rollout strategy on deployments (prefer 25%
+  by default for a value)
+
+If the operator or operand requires 3 or more replicas and should be
+running on worker nodes
+
+* Set soft pod anti-affinity on the hostname so that pods prefer to
+  land on separate nodes (will be violated on clusters with only 2
+  workers)
+* Use maxSurge for deployments, if possible, since the spreading rules
+  are soft
+
+When the topology does not support a highly available configuration,
+it should
+
+* Run 1 replica of its operand.
+* Avoid using anti-affinity settings on pods it creates.
+
+*NOTE:* In future, when we include the descheduler into OpenShift by
+default, it will periodically rebalance the cluster to ensure
+spreading for operand or operator is honored. At that time we will
+remove hard anti-affinity constraints, and recommend components move
+to a surge model during upgrades.
 
 #### Upgrade and Reconfiguration
 
