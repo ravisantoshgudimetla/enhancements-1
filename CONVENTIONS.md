@@ -141,7 +141,7 @@ We focus on minimizing the impact of a failure of individual nodes in
 a cluster by ensuring operators or operands are spread across multiple
 nodes using pod
 [anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#always-co-located-in-the-same-node)
-rules so that no two pods run on the same node. This approach only
+rules so that no two replicas of the same component run on the same node. This approach only
 works for highly-available or compact clusters, where there are
 multiple nodes.
 
@@ -170,7 +170,7 @@ running on worker nodes
   are soft
 
 When the topology does not support a highly available configuration,
-it should
+the operator should
 
 * Run 1 replica of its operand.
 * Avoid using anti-affinity settings on pods it creates.
